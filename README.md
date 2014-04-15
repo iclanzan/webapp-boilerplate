@@ -8,6 +8,7 @@ Assuming you have `git` and `node` installed, run:
 + `git clone --depth 1 https://github.com/iclanzan/webapp-boilerplate.git my-app-name`
 + `cd my-app-name`
 + `npm install`
++ `bower install`
 
 Make sure to change the app name in `package.json`.
 
