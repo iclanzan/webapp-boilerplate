@@ -1,25 +1,22 @@
 /* Basic reset */
 *, :before, :after {
-  box-sizing: border-box;
-
   font-family: inherit;
-  text-decoration: none;
-  color: inherit;
-  line-height: inherit;
-
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  line-height: inherit;
+  color: inherit;
+  text-decoration: none;
+  box-sizing: border-box;
 }
 
 html {
   height: 100%;
-  color: $text-color;
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: $font-size-base;
   line-height: 1.4;
+  color: $text-color;
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;
-
-  font-size: $font-size-base;
 
   /* Responsive: Portrait tablets and up */
   @media screen and (min-width: 768px) {
@@ -33,9 +30,9 @@ body {
 }
 
 ul {
-  list-style: none;
-  margin: 0;
   padding: 0;
+  margin: 0;
+  list-style: none;
 }
 
 iframe {
