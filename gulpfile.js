@@ -24,6 +24,7 @@ gulp.task('styles', function () {
 gulp.task('scripts', function () {
   return gulp.src(['gulpfile.js', 'app/scripts/**/*.js'])
     .pipe($.jshint('.jshintrc'))
+    .pipe($.jscs())
     .pipe($.jshint.reporter('default'))
     .pipe($.size());
 });
