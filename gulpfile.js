@@ -75,7 +75,7 @@ gulp.task('fonts', function () {
 
 // Clean
 gulp.task('clean', function () {
-  return gulp.src(['dist/styles', 'dist/scripts', 'dist/images', 'dist/fonts'], { read: false }).pipe($.clean());
+  return gulp.src(['dist/styles', 'dist/scripts', 'dist/images', 'dist/fonts'], {read: false}).pipe($.clean());
 });
 
 // Build
@@ -97,7 +97,7 @@ gulp.task('connect', function () {
 });
 
 // Open
-gulp.task('serve', ['connect', 'styles'], function() {
+gulp.task('serve', ['connect', 'styles'], function () {
   run('http://0.0.0.0:9000');
 });
 

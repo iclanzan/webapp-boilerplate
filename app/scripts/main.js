@@ -4,7 +4,7 @@
 
 
   var Person = Backbone.Model.extend({
-    promptName: function() {
+    promptName: function () {
       var name = window.prompt('Please enter your name:');
       this.set({name: name});
     }
@@ -25,13 +25,13 @@
 
   var Router = Backbone.Router.extend({
     routes: {
-      'greet': 'greeter'
+      greet: 'greeter'
     },
 
-    greeter: function() {
+    greeter: function () {
       var person = new Person();
 
-      person.on('change:name', function(model, name) {
+      person.on('change:name', function (model, name) {
         app.greetingView.render(name);
       });
 
