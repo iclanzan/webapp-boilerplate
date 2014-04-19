@@ -34,7 +34,7 @@ var notifier = $.notify({
   title: function () {
     return pkg.name + ' notification';
   },
-  message: function (file) {
+  message: function () {
     return 'Tasks completed successfully.';
   },
   onLast: true
@@ -44,8 +44,8 @@ var errorNotifier = $.notify.onError({
   title: function () {
     return pkg.name + ' error';
   },
-  message: function (error) {
-    return 'Plugin ' + error.plugin + ' reported erors!';
+  message: function () {
+    return 'A task has reported errors!';
   }
 });
 
@@ -73,8 +73,9 @@ gulp.task('scripts', function () {
   return pipe(
     gulp.src(['gulpfile.js', 'app/scripts/**/*.js']),
     $.jshint('.jshintrc'),
-    $.jscs(),
     $.jshint.reporter('default'),
+    $.jshint.reporter('fail'),
+    $.jscs(),
     $.size()
   )
   .on('error', errorNotifier);
@@ -111,13 +112,13 @@ gulp.task('html', ['styles', 'scripts'], function () {
 
 // Images
 gulp.task('images', function () {
-  return gulp.src('app/images/**/*')
+  return gulp.src('app/**/*')
     .pipe($.cache($.imagemin({
       optimizationLevel: 3,
       progressive: true,
       interlaced: true
     })))
-    .pipe(gulp.dest('dist/images'))
+    .pipe(gulp.dest('dist'))
     .pipe($.size());
 });
 
