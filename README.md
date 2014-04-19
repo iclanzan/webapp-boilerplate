@@ -24,3 +24,46 @@ Executing `gulp watch` will trigger a dev build, spawn a web server and open the
 ## Production ##
 
 Running `gulp` with no arguments will trigger a production build into the `dist` folder.
+
+
+## File Structure ##
+
+_This structure is unimplemented yet._
+
+```
+.
+├─ app 
+│  ├─ content
+│  │  ├─ index.md
+│  │  ├─ about.md
+│  │  ├─ blog
+│  │  │  ├─ index.md
+│  │  │  ├─ 2013-05-20-why-do-it
+│  │  │  │  ├─ index.md
+│  │  │  │  └─ image.png
+│  │  │  └─ 2013-04-22-reasons-to-learn-javascript.md
+│  │  └─ docs
+│  │     └─ overview.md
+│  ├─ layout
+│  │  ├─ index.html
+│  │  └─ header.html
+│  ├─ styles
+│  │  ├─ components
+│  │  │  ├─ _buttons.scss
+│  │  │  └─ _modal.scss 
+│  │  ├─ index.scss
+│  │  └─ _util.scss
+│  ├─ scripts
+│  │  ├─ index.js
+│  │  └─ robots.txt
+│  └─ assets
+│     ├─ favicon.ico
+│     └─ robots.txt
+├─ output
+├─ .editorconfig
+├─ .csslintrc
+├─ .jscsrc
+├─ .jshintrc
+├─ gulpfile.js
+└─ package.json
+```
