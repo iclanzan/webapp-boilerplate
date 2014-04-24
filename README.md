@@ -4,14 +4,9 @@
 
 Assuming you have `git` and `node` installed and you are starting a project from scratch, run:
 
-+ `npm install -g bower gulp`
 + `git clone --depth 1 https://github.com/iclanzan/webapp-boilerplate.git my-app`
 + `cd my-app`
-+ `rm -rf .git`
-+ `git init`
-+ In both `package.json` and `bower.json` replace `"name": "webapp-boilerplate"` with `"name": "my-app"`
-+ `npm install`
-+ `bower install`
++ `npm run setup`
 
 
 ## Local Development ##

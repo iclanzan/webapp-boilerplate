@@ -60,6 +60,7 @@
     "node": ">=0.10.0"
   },
   "scripts": {
-    "build": "gulp"
+    "build": "gulp",
+    "setup": "npm install -g gulp bower && npm install && bower install && rm -rf .git && git init && gulp rename"
   }
 }
