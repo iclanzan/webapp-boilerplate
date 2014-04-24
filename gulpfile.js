@@ -1,128 +1,191 @@
 'use strict';
 
+var path = require('path');
 var gulp = require('gulp');
-var run = require('open');
-var wiredep = require('wiredep').stream;
-var pipe = require('multipipe');
+var lazypipe = require('lazypipe');
+var es = require('event-stream');
+var cs = require('combined-stream');
+var args = require('yargs').argv;
 
 // Load plugins
 var $ = require('gulp-load-plugins')();
 
 // Load package.json
-var pkg = require('package.json');
+var pkg = require('./package.json');
 
-var reporter = function (property) {
-  return $.notify({
-    title: function (file) {
-      return file[property].errorCount + ' error(s): ' + property;
-    },
-    message: function (file) {
-      if (file.success) {
-        return false;
-      }
+// Environment specific configuration
+var env = args.env || process.env.NODE_ENV || 'development';
+var config = pkg.config = pkg.config[env];
 
-      return file[property].results.map(function (result) {
-        console.log(Object.keys(result.error));
-        return result.relative + '\n' + '[' + result.error.line + ':' + result.error.character + '] ' + result.error.reason;
-      }).join('\n');
-    },
-    onLast: true
-  });
-};
-
-var notifier = $.notify({
-  title: function () {
-    return pkg.name + ' notification';
-  },
-  message: function () {
-    return 'Tasks completed successfully.';
-  },
-  onLast: true
-});
-
+// Error notification handler
 var errorNotifier = $.notify.onError({
   title: function () {
     return pkg.name + ' error';
   },
-  message: function () {
-    return 'A task has reported errors!';
+  message: function (error) {
+    console.log(error);
+    return error.message || 'A task has reported errors!';
   }
 });
 
+function extname(file) {
+  return path.extname(file).slice(1);
+}
 
+var stylesSrc = 'app/styles/*.scss';
+var scriptsSrc = ['gulpfile.js', 'app/scripts/**/*.js', 'app/components/**/*.js', 'app/app.js'];
 
-// Styles (Sass)
-gulp.task('styles', function () {
-  return pipe(
-    gulp.src('app/styles/main.scss'),
-    $.sass({
-      style: 'expanded',
-      loadPath: ['app/bower_components']
-    }),
-    $.csslint('.csslintrc'),
-    $.csslint.reporter(),
-    $.autoprefixer('last 2 versions'),
-    gulp.dest('app/styles'),
-    $.size()
-  )
-  .on('error', errorNotifier);
-});
+var connectPaths = ['.tmp/output', 'app/assets', 'app/scripts', 'app/components', 'app/bower_components', 'app'];
 
-// Scripts
-gulp.task('scripts', function () {
-  return pipe(
-    gulp.src(['gulpfile.js', 'app/scripts/**/*.js']),
-    $.jshint('.jshintrc'),
-    $.jshint.reporter('default'),
-    $.jshint.reporter('fail'),
-    $.jscs(),
-    $.size()
-  )
-  .on('error', errorNotifier);
-});
+function styles(isBuild) {
+  var stylesPipe = lazypipe()
+    .pipe(gulp.src, stylesSrc)
+    .pipe($.sass, {
+      outputStyle: 'nested',
+      includePaths: ['app/bower_components', 'app/components']
+    })
+    .pipe($.csslint, '.csslintrc')
+    .pipe($.csslint.reporter)
+    .pipe($.csslint.failReporter)
+    .pipe($.autoprefixer, ['last 2 versions', 'Android 4']);
 
-// Content (Markdown)
-gulp.task('content', function () {
-  return gulp.src('app/content/**/*.md')
-    .pipe($.markdown())
-    .pipe(gulp.dest('dist'));
-});
+  if (isBuild) {
+    stylesPipe = stylesPipe.pipe($.csso);
+  }
 
-// HTML
-gulp.task('html', ['styles', 'scripts'], function () {
-  var jsFilter = $.filter('**/*.js');
-  var cssFilter = $.filter('**/*.css');
+  stylesPipe = stylesPipe
+    .pipe(gulp.dest, (isBuild ? '' : '.tmp/') + 'output/styles');
 
-  return pipe(
-    gulp.src('app/*.html'),
-    $.useref.assets(),
-    jsFilter,
-    $.uglify(),
-    jsFilter.restore(),
-    cssFilter,
-    $.csso(),
-    cssFilter.restore(),
-    $.useref.restore(),
-    $.useref(),
-    gulp.dest('dist'),
-    $.size()
-  )
-  .on('error', errorNotifier);
-});
+  var stylesStream = stylesPipe();
+  if (!isBuild) {
+    stylesStream.on('error', errorNotifier);
+  }
 
-// Images
+  var stream = es.merge(
+    stylesStream,
+    $.bowerFiles().pipe($.filter('**/*.css'))
+  );
+
+  return stream;
+}
+
+function scripts(isBuild) {
+  var configPipe = lazypipe()
+    .pipe(gulp.src, 'app/config.js')
+    .pipe($.template, pkg)
+    .pipe(gulp.dest, '.tmp/output');
+
+  var scriptsPipe = lazypipe()
+    .pipe(gulp.src, scriptsSrc)
+    .pipe($.jshint, '.jshintrc')
+    .pipe($.jshint.reporter, 'default')
+    .pipe($.jshint.reporter, 'fail')
+    .pipe($.jscs);
+
+  var templatesPipe = lazypipe()
+    .pipe(gulp.src, 'app/components/**/*.html')
+    .pipe($.htmlhint, '.htmlhintrc')
+    .pipe($.htmlhint.reporter)
+    .pipe($.jst)
+    .pipe($.declare, {
+      root: 'app',
+      namespace: 'templates',
+      noRedeclare: true
+    })
+    .pipe($.concat, 'templates.js')
+    .pipe(gulp.dest, isBuild ? 'output' : '.tmp/output');
+
+  var stream = $.filter(['**/*.js', '!gulpfile.js']);
+
+  cs.create()
+    .append($.bowerFiles())
+    .append(configPipe())
+    .append(templatesPipe())
+    .append(scriptsPipe())
+    .pipe(stream);
+
+  if (isBuild) {
+    stream = stream
+      .pipe($.concat('app.min.js'))
+      .pipe($.uglify())
+      .pipe(gulp.dest('output/scripts'));
+  }
+
+  if (!isBuild) {
+    stream.on('error', errorNotifier);
+  }
+
+  return stream;
+}
+
+function injector(filepath, file) {
+  switch (extname(filepath)) {
+    case 'css':
+      return '<style>' + file.contents + '</style>';
+    case 'js':
+      return '<script>' + file.contents + '</script>';
+    case 'html':
+      return '<link rel="import" href="' + filepath + '">';
+  }
+}
+
+// Link JS and CSS inside HTML
+function wire(isBuild) {
+  console.log(arguments);
+  var injectOptions = {
+    ignorePath: connectPaths.concat('output')
+  };
+
+  if (isBuild) {
+    injectOptions.transform = injector;
+  }
+
+  var pipeline = lazypipe()
+    .pipe(gulp.src, 'app/*.html')
+    .pipe($.htmlhint, '.htmlhintrc')
+    .pipe($.htmlhint.reporter)
+    .pipe($.template, pkg)
+    .pipe($.filter, 'index.html')
+    .pipe($.inject, es.merge(
+      styles(isBuild),
+      scripts(isBuild)
+    ), injectOptions);
+
+  if (isBuild) {
+    pipeline = pipeline.pipe($.minifyHtml);
+  }
+
+  return pipeline.pipe(gulp.dest, isBuild ? 'output' : '.tmp/output')()
+    .on('error', errorNotifier);
+}
+
+// Minify images
 gulp.task('images', function () {
-  return gulp.src('app/**/*')
+  return gulp.src('app/assets/**/*.{png,jpg,jpeg,gif}')
     .pipe($.cache($.imagemin({
-      optimizationLevel: 3,
+      optimizationLevel: 7,
+      pngquant: true,
       progressive: true,
       interlaced: true
     })))
-    .pipe(gulp.dest('dist'))
-    .pipe($.size());
+    .pipe(gulp.dest('output'))
+    .on('error', errorNotifier);
 });
 
-// Fonts
+// Minify SVG files
+gulp.task('svgmin', function () {
+  return gulp.src('app/assets/**/*.svg')
+    .pipe($.svgmin())
+    .pipe(gulp.dest('output'));
+});
+
+// Copy assets that don’t need to be processed
+gulp.task('copy', function () {
+  return gulp.src(['app/assets/**/*.!(png|jpg|jpeg|gif|svg|md)'])
+    .pipe(gulp.dest('output'));
+});
+
+// Copy fonts
 gulp.task('fonts', function () {
   return $.bowerFiles()
     .pipe($.filter([
@@ -132,17 +195,17 @@ gulp.task('fonts', function () {
       '**/*.woff'
     ]))
     .pipe($.flatten())
-    .pipe(gulp.dest('dist/fonts'))
-    .pipe($.size());
+    .pipe(gulp.dest('output/fonts'));
 });
 
 // Clean
 gulp.task('clean', function () {
-  return gulp.src(['dist/styles', 'dist/scripts', 'dist/images', 'dist/fonts'], {read: false}).pipe($.clean());
+  return gulp.src(['output', '.tmp/output'], {read: false})
+    .pipe($.clean());
 });
 
 // Build
-gulp.task('build', ['html', 'images', 'fonts']);
+gulp.task('build', ['wireBuild', 'images', 'fonts', 'svgmin', 'copy']);
 
 // Default task
 gulp.task('default', ['clean'], function () {
@@ -152,57 +215,62 @@ gulp.task('default', ['clean'], function () {
 // Connect
 gulp.task('connect', function () {
   $.connect.server({
-    root: ['app'],
-    host: '0.0.0.0',
-    port: 9000,
+    root: connectPaths,
+    host: config.connect.host,
+    port: config.connect.port,
     livereload: true
   });
 });
 
-// Open
-gulp.task('serve', ['connect', 'styles'], function () {
-  run('http://0.0.0.0:9000');
-});
+// Compile and lint stylesheets (Sass)
+gulp.task('styles', styles.bind(null, false));
 
-// Inject Bower components
-gulp.task('wiredep', function () {
-  gulp.src('app/styles/*.scss')
-    .pipe(wiredep({
-      directory: 'app/bower_components',
-      ignorePath: 'app/bower_components/'
-    }))
-    .pipe(gulp.dest('app/styles'));
+// Lint scripts
+gulp.task('scripts', scripts.bind(null, false));
 
-  gulp.src('app/*.html')
-    .pipe(wiredep({
-      directory: 'app/bower_components',
-      ignorePath: 'app/'
-    }))
-    .pipe(gulp.dest('app'));
+gulp.task('wireDev', wire.bind(null, false));
+
+gulp.task('wireBuild', wire.bind(null, true));
+
+// Open browser
+gulp.task('serve', ['connect', 'wireDev'], function () {
+  require('open')('http://' + config.connect.host + ':' + config.connect.port);
 });
 
 // Watch
-gulp.task('watch', ['connect', 'serve'], function () {
-  // Watch for changes in `app` folder
+gulp.task('watch', ['serve'], function () {
   gulp.watch([
-    'app/*.html',
-    'app/styles/**/*.scss',
-    'app/scripts/**/*.js',
-    'app/images/**/*'
+    'app/{assets,scripts}/**/*',
+    'app/components/**/*.js',
+    '.tmp/output/**/*'
   ], function (event) {
     return gulp.src(event.path)
       .pipe($.connect.reload());
   });
 
-  // Watch .scss files
-  gulp.watch('app/styles/**/*.scss', ['styles']);
+  gulp.watch([stylesSrc, 'app/components/**/*', scriptsSrc, 'app/index.html', 'bower.json'], ['wireDev']);
+});
 
-  // Watch .js files
-  gulp.watch('app/scripts/**/*.js', ['scripts']);
+// Bump app version
+function bump(type) {
+  return gulp.src(['package.json', 'bower.json'])
+    .pipe($.bump({type: type}))
+    .pipe(gulp.dest('./'));
+}
 
-  // Watch image files
-  gulp.watch('app/images/**/*', ['images']);
+gulp.task('bump', bump.bind(null, 'patch'));
+gulp.task('bump-minor', bump.bind(null, 'minor'));
+gulp.task('bump-major', bump.bind(null, 'major'));
 
-  // Watch bower files
-  gulp.watch('bower.json', ['wiredep']);
+gulp.task('rename', function () {
+  return gulp.src(['package.json', 'bower.json'])
+    .pipe($.jsonEditor({name: path.basename(__dirname)}))
+    .pipe(gulp.dest('./'));
+});
+
+// Create zip archive
+gulp.task('zip', ['build'], function () {
+  return gulp.src('output/**/*')
+    .pipe($.zip(pkg.name + '-' + pkg.version + '.zip'))
+    .pipe(gulp.dest('archives'));
 });

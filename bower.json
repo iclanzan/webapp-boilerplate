@@ -1,5 +1,6 @@
 {
   "name": "webapp-boilerplate",
+  "version": "0.0.0",
   "private": true,
   "dependencies": {
     "jquery": "~2.1.0",
