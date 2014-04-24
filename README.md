@@ -30,7 +30,12 @@ Executing `gulp watch` will trigger a dev build which does the following:
 
 Running `gulp` with no arguments will trigger a production build into the `output` folder. The app can also be packaged in a zip file under the _archives_ folder if `gulp zip` is used instead.
 
-In addition to the development tasks, a production build concatenates scripts, minifies scripts, stylesheets and html and inlines resources.
+In addition to the development tasks listed above, a production build:
+
+1. Concatenates scripts.
+2. Minifies scripts, stylesheets, html and svg
+3. Inlines scripts and stylesheets.
+4. Optimizes images (_png_, _jpg_ and _gif_)
 
 When preparing for a new release run `gulp bump`, `gulp bump-minor` or `gulp bump-major` before triggering a build, to bump the patch, minor or major version respectively.
 
