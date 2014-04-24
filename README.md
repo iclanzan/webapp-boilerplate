@@ -49,23 +49,25 @@ This is a simplified example file structure to give an overview of where things 
 ├─ app
 │  ├─ components
 │  │  ├─ sidebar
-│  │  │  ├─ template.html
-│  │  │  └─ style.scss
+│  │  │  ├─ sidebar.html
+│  │  │  └─ _sidebar.scss
 │  │  └─ modal
-│  │     ├─ template.html
-│  │     ├─ view.js
-│  │     └─ style.scss
+│  │     ├─ modal.html
+│  │     ├─ modal.js
+│  │     └─ _modal.scss
 │  ├─ styles
-│  │  ├─ index.scss
+│  │  ├─ main.scss
 │  │  └─ _util.scss
 │  ├─ scripts
-│  │  ├─ index.js
+│  │  ├─ definitions.js
 │  │  └─ engine.js
 │  ├─ assets
 │  │  ├─ favicon.ico
 │  │  └─ robots.txt
-│  └─ index.html
+│  ├─ index.html
+│  └─ app.js
 ├─ output
+├─ archives
 ├─ gulpfile.js
 ├─ bower.js
 └─ package.json
