@@ -272,5 +272,6 @@ gulp.task('rename', function () {
 gulp.task('zip', ['build'], function () {
   return gulp.src('output/**/*')
     .pipe($.zip(pkg.name + '-' + pkg.version + '.zip'))
-    .pipe(gulp.dest('archives'));
+    .pipe(gulp.dest('archives'))
+    .pipe($.size());
 });
